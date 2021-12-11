@@ -1,0 +1,21 @@
+From: Jeremy Bicha <jbicha@ubuntu.com>
+Date: Wed, 4 Apr 2018 10:19:30 -0400
+Subject: Allow users to uninstall Totem using the GNOME Software app
+
+since we explicitly allow it to be removed in our minimal install option
+---
+ data/appdata/org.gnome.Totem.appdata.xml.in | 1 -
+ 1 file changed, 1 deletion(-)
+
+Index: totem-3.33.90/data/appdata/org.gnome.Totem.appdata.xml.in
+===================================================================
+--- totem-3.33.90.orig/data/appdata/org.gnome.Totem.appdata.xml.in
++++ totem-3.33.90/data/appdata/org.gnome.Totem.appdata.xml.in
+@@ -27,7 +27,6 @@
+   </screenshots>
+   <update_contact>hadess@hadess.net</update_contact>
+   <project_group>GNOME</project_group>
+-  <compulsory_for_desktop>GNOME</compulsory_for_desktop>
+   <translation type="gettext">totem</translation>
+   <releases>
+     <release version="3.34.1" date="2019-10-04">

@@ -1,0 +1,36 @@
+From: Simone Piccardi <simone.piccardi@gmail.com>
+Date: Tue, 15 Jan 2019 15:30:16 -0500
+Subject: Add Mute action
+
+Forwarded: https://gitlab.gnome.org/GNOME/totem/merge_requests/32
+---
+ src/totem-menu.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/totem-menu.c b/src/totem-menu.c
+index cc7cbed..dc7cf9a 100644
+--- a/src/totem-menu.c
++++ b/src/totem-menu.c
+@@ -296,6 +296,14 @@ remote_command_cb (GSimpleAction *action,
+ 		totem_object_remote_command (totem, cmd, url);
+ }
+ 
++static void
++mute_action_cb (GSimpleAction *action,
++			    GVariant      *parameter,
++			    gpointer       user_data)
++{
++	TOTEM_PROFILE (totem_object_volume_toggle_mute (TOTEM_OBJECT (user_data)));
++}
++
+ static GActionEntry app_entries[] = {
+ 	/* Main app menu */
+ 	{ "open", open_action_cb, NULL, NULL, NULL },
+@@ -306,6 +314,7 @@ static GActionEntry app_entries[] = {
+ 	{ "shortcuts", keyboard_shortcuts_action_cb, NULL, NULL, NULL },
+ 	{ "help", help_action_cb, NULL, NULL, NULL },
+ 	{ "quit", quit_action_cb, NULL, NULL, NULL },
++	{ "mute", mute_action_cb, NULL, NULL, NULL },
+ 
+ 	/* "Go" menu */
+ 	{ "dvd-root-menu", dvd_root_menu_action_cb, NULL, NULL, NULL },

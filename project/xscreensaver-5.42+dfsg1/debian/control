@@ -1,0 +1,196 @@
+Source: xscreensaver
+Section: x11
+Priority: optional
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Tormod Volden <debian.tormod@gmail.com>
+Build-Depends: autotools-dev,
+               bc,
+               debhelper (>= 9.0),
+               dh-autoreconf,
+               dpkg-dev (>= 1.16.1),
+               fortune-mod,
+               intltool,
+               libgl1-mesa-dev | libgl-dev,
+               libglade2-dev,
+               libgle-dev,
+               libglu1-mesa-dev | xlibmesa-glu-dev | libglu-dev,
+               libgtk2.0-dev,
+               libjpeg-dev,
+               libpam0g-dev,
+               libpng-dev,
+               libx11-dev,
+               libxext-dev,
+               libxinerama-dev,
+               libxml2-dev,
+               libxmu-dev,
+               libxrandr-dev,
+               libxss-dev,
+               libxt-dev,
+               libxtst-dev,
+               libxxf86vm-dev,
+               pkg-config,
+               quilt,
+               x11proto-core-dev,
+               xbitmaps,
+               xutils-dev
+Standards-Version: 4.1.4
+Homepage: https://www.jwz.org/xscreensaver/
+Vcs-Browser: https://salsa.debian.org/debian/xscreensaver
+Vcs-Git: https://salsa.debian.org/debian/xscreensaver.git
+
+Package: xscreensaver
+Architecture: any
+Depends: xscreensaver-data, ${misc:Depends}, ${shlibs:Depends}
+Recommends: libjpeg-turbo-progs, miscfiles | wordlist, perl
+Suggests: fortune,
+          gdm3 | kdm-gdmcompat,
+          qcam | streamer,
+          www-browser,
+          xdaliclock,
+          xfishtank,
+          xscreensaver-data-extra,
+          xscreensaver-gl,
+          xscreensaver-gl-extra
+Description: Screensaver daemon and frontend for X11
+ XScreenSaver is a modular screen saver and locker for X11,
+ containing more than 200 screen savers.
+ .
+ This package includes the bare minimum needed to blank and lock your
+ screen. Install this package if you want to use the xscreensaver engine
+ to control screen blanking and launching display modes ("hacks"). If
+ you only want to use other screensaver engines, you don't need to
+ install this package.
+ .
+ The graphical display modes are in the xscreensaver-data,
+ xscreensaver-data-extra, xscreensaver-gl and xscreensaver-gl-extra
+ packages.
+
+Package: xscreensaver-data
+Architecture: any
+Depends: libwww-perl, ${misc:Depends}, ${shlibs:Depends}
+Suggests: xscreensaver
+Description: Screen saver modules for screensaver frontends
+ XScreenSaver is a modular screen saver and locker for X11,
+ containing more than 200 screen savers.
+ .
+ This package contains a small selection of graphical screen saver
+ modules (listed below) from the xscreensaver collection. This package
+ can be used by xscreensaver and also some other screensaver engines.
+ .
+ This is the selected set of non-GL screensavers shipped by default:
+ abstractile, binaryring, cwaves, deco, distort, fiberlamp, fuzzyflakes,
+ galaxy, hexadrop, m6502, metaballs, penrose, ripples, shadebobs,
+ slidescreen, swirl, tessellimage, xlyap.
+ .
+ More display modes can be found in xscreensaver-data-extra,
+ xscreensaver-gl and xscreensaver-gl-extra packages.
+
+Package: xscreensaver-data-extra
+Architecture: any
+Depends: dictionaries-common,
+         libjpeg-turbo-progs,
+         netpbm,
+         xscreensaver-data,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: Extra screen saver modules for screensaver frontends
+ XScreenSaver is a modular screen saver and locker for X11,
+ containing more than 200 screen savers.
+ .
+ This package contains the rest of the 2D screen saver modules from
+ the xscreensaver collection. This package can be used by
+ xscreensaver and also some other screensaver engines.
+ .
+ This is the set of non-GL screensavers not shipped by default:
+ anemone, anemotaxis, apollonian, apple2, attraction, barcode,
+ blaster, blitspin, bouboule, boxfit, braid, bumps, ccurve, celtic,
+ cloudlife, compass, coral, crystal, cynosure, decayscreen, deluxe,
+ demon, discrete, drift, epicycle, eruption, euler2d, fadeplot,
+ filmleader, fireworkx, flame, flow, fluidballs, fontglide, glitchpeg,
+ goop, grav, greynetic, halftone, halo, helix, hopalong, ifs, imsmap,
+ interaggregate, interference, intermomentary, julia, kaleidescope,
+ kumppa, lcdscrub, ljlatest, loop, maze, memscroller, moire2, moire,
+ mountain, munch, nerverot, noseguy, pacman, pedal, penetrate, petri,
+ phosphor, piecewise, polyominoes, pong, pyro, qix, rd-bomb, rocks,
+ rorschach, rotzoomer, sierpinski, slip, speedmine, spotlight,
+ squiral, starfish, strange, substrate, thornbird, triangle, truchet,
+ twang, vermiculate, vfeedback, vidwhacker, wander, whirlwindwarp,
+ wormhole, xanalogtv, xflame, xjack, xmatrix, xrayswarm, xspirograph,
+ zoom.
+ .
+ More display modes can be found in the xscreensaver-data,
+ xscreensaver-gl and xscreensaver-gl-extra packages.
+
+Package: xscreensaver-gl
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Suggests: xscreensaver
+Description: GL(Mesa) screen saver modules for screensaver frontends
+ XScreenSaver is a modular screen saver and locker for X11,
+ containing more than 200 screen savers.
+ .
+ This package contains a small selection of 3D (OpenGL) screen saver
+ modules from the xscreensaver collection. This package can be used by
+ xscreensaver and also some other screensaver engines.
+ .
+ This is the set of GL screensavers shipped by default:
+ antinspect, antspotlight, atunnel, blinkbox, bubble3d, circuit,
+ cityring, crumbler, cubestack, cubestorm, cubetwist, discoball,
+ dymaxionmap, endgame, energystream, engine, esper, flipflop,
+ flipscreen3d, flyingtoasters, gears, geodesic, geodesicgears, gflux,
+ glblur, glcells, gleidescope, glknots, glmatrix, glschool,
+ glslideshow, glsnake, gltext, hexstrut, hydrostat, hypertorus,
+ jigglypuff, kaleidocycle, lavalite, lockward, maze3d, mirrorblob,
+ moebius, moebiusgears, molecule, morph3d, peepers, pipes, polyhedra,
+ polytopes, projectiveplane, pulsar, quasicrystal, queens, raverhoop,
+ razzledazzle, romanboy, sierpinski3d, sonar, spheremonics, splitflap,
+ splodesic, stonerview, superquadrics, topblock, unicrud, vigilance,
+ voronoi, winduprobot.
+ .
+ More display modes can be found in the xscreensaver-data,
+ xscreensaver-data-extra and xscreensaver-gl-extra packages.
+
+Package: xscreensaver-gl-extra
+Architecture: any
+Depends: xscreensaver-gl, ${misc:Depends}, ${shlibs:Depends}
+Description: Extra GL(Mesa) screen saver modules for screensaver frontends
+ XScreenSaver is a modular screen saver and locker for X11,
+ containing more than 200 screen savers.
+ .
+ This package contains the rest of the 3D (OpenGL) screen saver
+ modules from the xscreensaver collection. This package can be used by
+ xscreensaver and also some other screensaver engines.
+ .
+ This is the set of GL screensavers not shipped by default with
+ xscreensaver-gl:
+ antmaze, atlantis, blocktube, boing, bouncingcow, boxed, cage,
+ carousel, companioncube, crackberg, cube21, cubenetic, cubicgrid,
+ dangerball, extrusion, fliptext, flurry, glhanoi, glplanet, handsy,
+ hilbert, hypnowheel, jigsaw, juggler3d, klein, lament, menger, noof,
+ photopile, pinion, providence, rubik, rubikblocks, sballs, skytentacles,
+ sproingies, stairs, starwars, surfaces, tangram, timetunnel, tronbit,
+ unknownpleasures.
+ .
+ More display modes can be found in the xscreensaver-data,
+ xscreensaver-data-extra and xscreensaver-gl packages.
+
+Package: xscreensaver-screensaver-webcollage
+Architecture: any
+Depends: xscreensaver-data-extra, ${misc:Depends}, ${shlibs:Depends}
+Description: Webcollage screen saver module from XScreenSaver
+ This package ships the mode webcollage which displays images from random
+ web searches on the Internet.
+ .
+ WARNING: The Internet being what it is, absolutely anything might show up
+ in the collage of search results including -- quite possibly -- pornography,
+ or even nudity. Please act accordingly.
+
+Package: xscreensaver-screensaver-bsod
+Architecture: any
+Depends: xscreensaver-data-extra, ${misc:Depends}, ${shlibs:Depends}
+Description: BSOD screen saver module from XScreenSaver
+ This package ships the mode BSOD that shows the popular Blue Screens of Death
+ from several OSes including BSD, Windows, Linux, Solaris, Apple and much more.
+ .
+ WARNING: This screensaver could be confused with a real BSOD and could lead an
+ user to reboot the machine with consequences like data loss.

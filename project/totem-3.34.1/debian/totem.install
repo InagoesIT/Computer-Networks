@@ -1,0 +1,5 @@
+usr/bin
+usr/libexec/totem-gallery-thumbnailer
+usr/share/applications
+usr/share/metainfo/org.gnome.Totem.appdata.xml
+usr/share/dbus-1/services/

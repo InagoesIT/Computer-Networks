@@ -1,0 +1,4 @@
+debian/Don-t-run-pylint-at-build-time.patch
+dont-make-compulsory.patch
+91_quicklist_entries.patch
+Add-Mute-action.patch
