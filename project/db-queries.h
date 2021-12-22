@@ -1,9 +1,4 @@
-#include <sqlite3.h> 
-#include <iostream>
-#include <string>
-#include <string.h>
-
-using namespace std;
+#pragma once
 
 class DbQueries
 {
@@ -153,15 +148,4 @@ bool DbQueries::getNLeaders(int n)
     if( dup2((sock desc), 1) == -1)
         err;
     */
-}
-
-int main()
-{
-    DbQueries db("users.db");
-    // cout << db.isPasswordCorrect("melen", "123bla") << endl;
-    // cout << db.isPasswordCorrect("melefg", "123bla") << endl;
-    // cout << db.isNameAvailable("fif") << endl;
-    // cout << db.isNameAvailable("fifi") << endl;
-    // db.incrementScore("bub");
-    // db.getNLeaders(2);
 }
