@@ -25,6 +25,8 @@ void exitWithErr(string errorMessage);
 bool isMoveValid (string move);
 int isLoginInfoInvalid(string info);
 void getLoginInfo();
+bool isInputYesOrNo(string input);
+
 
 int main () 
 {
@@ -33,6 +35,7 @@ int main ()
     char msg[MSG_SIZE] = "\0";
     bool isLogged = false;
     char loginInfo[LOGIN_INFO_SIZE * 2] = "\0";
+    int nrLeaderboard;
 
     // creating the socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
@@ -63,11 +66,14 @@ int main ()
         string loginInfoAux = username + " " + password;
         strcpy(loginInfo, loginInfoAux.c_str());
 
-        if ( write(sock, loginInfo, strlen(loginInfo)) <= 0 )
+        if (write(sock, loginInfo, strlen(loginInfo)) <= 0 )
             exitWithErr("[client] Couldn't write login info to server.");
 
+        cout << "Please wait..." << endl;
+
         // check if login was successful
-        if ( read(sock, msg, MSG_SIZE) <= 0 )
+        memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
+        if (read(sock, msg, MSG_SIZE) <= 0 )
             exitWithErr("[client] Couldn't read the login result from server.");
         if (strcmp(msg, "username or password wrong"))
             isLogged = true;
@@ -75,10 +81,58 @@ int main ()
             cout << "[server] Username or password incorrect! Try again." << endl;
     }
 
+    // tell the client if they were registered or logged in
     if (!strcmp(msg, "login"))
-        cout << "[server] Login successful." << endl;
+        cout << "[server] Logged successfully." << endl;
     else
-        cout << "[server] Registering successful." << endl;
+        cout << "[server] Registered successfully." << endl;
+
+    cout << "[client] Please wait while the server finds an opponent..." << endl;
+
+    // find out if the server found an opponent
+    memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
+    if (read(sock, msg, MSG_SIZE) <= 0 )
+        exitWithErr("[client] Couldn't read the opponent result from server.");
+
+    if (!strcmp(msg, "sorry") || !strcmp(msg, "opponent down"))
+        cout << "[server] Sorry! We didn't find you an opponent to play with." << endl 
+                << "[client] Now you will be disconnected from the server. Bye!" << endl;
+    else 
+        cout << "[server] We found you an opponent to play with." << endl
+                << "Your opponent's name is: " << msg << endl;
+
+    return 0;
+
+    // ask the client if they want to see the leaderboard
+    cout << "Do you want to see the leaderboard?" << endl << "[y/n] ";
+    cin >> msg;
+
+    while (!isInputYesOrNo(msg))
+    {
+        cout << "You must type 'y', 'Y' or 'N', 'n'!! Try again." << endl;
+        cout << "Do you want to see the leaderboard?" << endl << "[y/n] ";
+        cin >> msg;
+    }
+
+    if (!strcmp(msg, "y"))
+    {
+        cout << "How many users do you want to see from the leaderboard?" << endl;
+        cin >> nrLeaderboard;
+        // HOW TO SEE IF NR OR NO
+    }
+
+    // send the answer to the server
+    if (write(sock, msg, strlen(loginInfo)) <= 0 )
+        exitWithErr("[client] Couldn't write leaderboard preference to server.");
+
+    // see what is the result of the request
+    if (!strcmp(msg, "y"))
+    {
+        memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
+        if (read(sock, msg, MSG_SIZE) <= 0 )
+            exitWithErr("[client] Couldn't read the leaderboard result from server.");
+    }
+    
 
     // closing the conection
     close (sock);
@@ -149,3 +203,13 @@ void getLoginInfo()
     }
     password = info;
 }
+
+bool isInputYesOrNo(string input)
+{
+    if (input.length() > 1)
+        return 0;
+    if (input.at(0) == 'y' || input.at(0) == 'n' || input.at(0) == 'Y' || input.at(0) == 'N')
+        return 1;
+    return 0;
+}
+

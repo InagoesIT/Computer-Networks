@@ -95,7 +95,7 @@ bool DbQueries::isPasswordCorrect(string name, string password)
 
     isUser = "SELECT CASE WHEN EXISTS (SELECT * FROM users WHERE name = '" + name 
                 + "' AND password = '" + password + "') THEN 1 ELSE 0 END;";
-
+ 
     const auto exists {sqlite3_exec(dbObj, isUser.c_str(), resultCallback, NULL, NULL)};
 
     return exists;
