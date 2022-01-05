@@ -1,5 +1,7 @@
 #pragma once
 
+#define LINE_SIZE 600
+
 class DbQueries
 {
     sqlite3 * dbObj;
@@ -7,9 +9,9 @@ class DbQueries
     void createDb();
     // -- callbacks --
     // process the output of getNLeaders
-    static int getNLeadersCallback(void * notUsed, int colCount, char** colData, char** colName);
+    static int getNLeadersCallback(void * sock, int colCount, char** colData, char** colName);
     // return the number of users in the database
-    static int countCallback(void * notUsed, int colCount, char** colData, char** colName);
+    static int countCallback(void * number, int colCount, char** colData, char** colName);
     // used for verifying if the select statement returned true or false
     static int resultCallback(void * exists, int colCount, char** colData, char** colName); 
 
@@ -21,7 +23,7 @@ class DbQueries
     bool isPasswordCorrect(string name, string password);
     bool isNameAvailable(string name);
     void incrementScore(string name);
-    bool getNLeaders(int n);
+    bool getNLeaders(int sock, int n);
 };
 
 void DbQueries::createDb()
@@ -42,18 +44,21 @@ void DbQueries::createDb()
         cerr << "Can't create database: " << sqlite3_errmsg(dbObj) << endl;
 }
 
-int DbQueries::getNLeadersCallback(void * notUsed, int colCount, char** colData, char** colName) 
+int DbQueries::getNLeadersCallback(void * sock, int colCount, char** colData, char** colName) 
 {
-    cout << "<" << colData[0] << ">";
-    cout << " has the score: " << colData[1];
-
-    cout << endl;
+    char output[LINE_SIZE] = "<";
+    strcat(output, colData[0]);
+    strcat(output, "> has the score: ");
+    strcat(output, colData[1]);
+    strcat(output, "\n");
+    write(*(int*)sock, output, LINE_SIZE);
     return 0;
 }
 
-int DbQueries::countCallback(void * notUsed, int colCount, char** colData, char** colName)
+int DbQueries::countCallback(void * number, int colCount, char** colData, char** colName)
 {
-    return atoi(colData[0]);
+    *(int*) number =  atoi(colData[0]);
+    return 0;
 }
 
 int DbQueries::resultCallback(void * notUsed, int colCount, char** colData, char** colName) 
@@ -122,30 +127,26 @@ void DbQueries::incrementScore(string name)
     sqlite3_exec(dbObj, isUser.c_str(), NULL, NULL, NULL);    
 }
 
-bool DbQueries::getNLeaders(int n)
+bool DbQueries::getNLeaders(int sock, int n)
 {
     char * dbErrMsg = 0;
     string statement;
 
     statement = "SELECT COUNT(*) FROM users;";
 
-    const auto number {sqlite3_exec(dbObj, statement.c_str(), countCallback, NULL, NULL)}; 
+    int size;
+    sqlite3_exec(dbObj, statement.c_str(), countCallback, &size, NULL); 
 
-    if (number < n)
-        return false;
-
-    statement = "SELECT name, games_won FROM users ORDER BY 2 DESC LIMIT " 
+    if (size < n)
+        statement = "SELECT name, games_won FROM users ORDER BY 2 DESC;";
+    else    
+        statement = "SELECT name, games_won FROM users ORDER BY 2 DESC LIMIT " 
                 + to_string(n) + ";";
 
-    sqlite3_exec(dbObj, statement.c_str(), getNLeadersCallback, NULL, &dbErrMsg);   
+    sqlite3_exec(dbObj, statement.c_str(), getNLeadersCallback, &sock, &dbErrMsg);   
 
     if(strcmp(sqlite3_errmsg(dbObj), "not an error"))
         cerr << dbErrMsg << endl;
 
     return true;
-    /* will use this to redirect stdout to socket:
-    close(1);
-    if( dup2((sock desc), 1) == -1)
-        err;
-    */
 }

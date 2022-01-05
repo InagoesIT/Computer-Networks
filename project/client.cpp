@@ -7,15 +7,16 @@
 #include <netdb.h>
 #include <errno.h>
 #include <string.h>
+#include <cmath>
 
 #include <string>
 #include <iostream>
 using namespace std;
 
 const int PORT = 2024; 
-const char * ADRESS = "127.0.0.2";
+const char * ADRESS = "127.0.0.1";
 const int LOGIN_INFO_SIZE = 50;
-const int MSG_SIZE = 200;
+const int MSG_SIZE = 600;
 
 int errno;
 string username;
@@ -26,6 +27,7 @@ bool isMoveValid (string move);
 int isLoginInfoInvalid(string info);
 void getLoginInfo();
 bool isInputYesOrNo(string input);
+int getNumber(string input);
 
 
 int main () 
@@ -36,6 +38,7 @@ int main ()
     bool isLogged = false;
     char loginInfo[LOGIN_INFO_SIZE * 2] = "\0";
     int nrLeaderboard;
+    string input;
 
     // creating the socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
@@ -94,43 +97,62 @@ int main ()
     if (read(sock, msg, MSG_SIZE) <= 0 )
         exitWithErr("[client] Couldn't read the opponent result from server.");
 
-    if (!strcmp(msg, "sorry") || !strcmp(msg, "opponent down"))
+    if (!strcmp(msg, "opponent down"))
         cout << "[server] Sorry! We didn't find you an opponent to play with." << endl 
                 << "[client] Now you will be disconnected from the server. Bye!" << endl;
     else 
         cout << "[server] We found you an opponent to play with." << endl
                 << "Your opponent's name is: " << msg << endl;
 
-    return 0;
+    // LEADERBOARD
 
-    // ask the client if they want to see the leaderboard
     cout << "Do you want to see the leaderboard?" << endl << "[y/n] ";
     cin >> msg;
 
     while (!isInputYesOrNo(msg))
     {
-        cout << "You must type 'y', 'Y' or 'N', 'n'!! Try again." << endl;
+        cout << "You must type 'y', 'Y' or 'N', 'n'! Try again." << endl;
         cout << "Do you want to see the leaderboard?" << endl << "[y/n] ";
         cin >> msg;
-    }
-
-    if (!strcmp(msg, "y"))
-    {
-        cout << "How many users do you want to see from the leaderboard?" << endl;
-        cin >> nrLeaderboard;
-        // HOW TO SEE IF NR OR NO
     }
 
     // send the answer to the server
     if (write(sock, msg, strlen(loginInfo)) <= 0 )
         exitWithErr("[client] Couldn't write leaderboard preference to server.");
 
-    // see what is the result of the request
-    if (!strcmp(msg, "y"))
+    // finding out the nr of the leaders wanted
+    if (!strcmp(msg, "y") || !strcmp(msg, "Y"))
     {
+        cout << "How many users do you want to see from the leaderboard?" << endl;
+        cin >> input;
+        nrLeaderboard = getNumber(input);
+
+        while (!nrLeaderboard)
+        {
+            cout << "Please type a valid number! Try again." << endl;
+            cout << "How many users do you want to see from the leaderboard?" << endl;
+            cin >> input;
+            nrLeaderboard = getNumber(input);         
+        }     
+
+        strcpy(msg, input.c_str());
+        // send the answer to the server
+        if (write(sock, msg, MSG_SIZE) <= 0 )
+            exitWithErr("[client] Couldn't write n for leaderboard to server.");
+
+        // read and display chunks of the result
         memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
         if (read(sock, msg, MSG_SIZE) <= 0 )
             exitWithErr("[client] Couldn't read the leaderboard result from server.");
+        
+        cout << "[server] The leaderboard is: " << endl;
+        cout << msg;
+        memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
+        while ( read(sock, msg, MSG_SIZE) )
+        {
+            cout << msg;
+            memset(msg, 0, MSG_SIZE*sizeof(msg[0]));
+        }
     }
     
 
@@ -161,7 +183,7 @@ bool isMoveValid (string move)
 
 int isLoginInfoInvalid(string info)
 {
-    if (info.length() > LOGIN_INFO_SIZE && info.find(' ') != string::npos)
+    if (info.length() > LOGIN_INFO_SIZE && info.find(' ') != string::npos || !info.length())
         return 1;
     else if (info.length() > LOGIN_INFO_SIZE)
         return 2;
@@ -211,5 +233,20 @@ bool isInputYesOrNo(string input)
     if (input.at(0) == 'y' || input.at(0) == 'n' || input.at(0) == 'Y' || input.at(0) == 'N')
         return 1;
     return 0;
+}
+
+int getNumber(string input)
+{
+    int res = 0;
+
+    for (int i = input.length() - 1, j = 0; i >= 0 ; i--, j++)
+    {
+        if (input.at(i) < '0' || input.at(i) > '9')
+            return 0;
+        
+        res += (input.at(i) - '0') * pow(10, j);
+    }
+
+    return res;
 }
 
