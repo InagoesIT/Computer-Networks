@@ -1,9 +1,3 @@
-#include <SDL2/SDL.h>
-#include <iostream>
-#include <string>
-
-using namespace std; 
-
 const int BOARD_SIZE = 640;
 const int BOARD_XY = 80;
 const int WIN_SIZE = BOARD_SIZE + 2 * BOARD_XY;
@@ -49,7 +43,7 @@ class Board
 	
 	public:
 
-	Board(string user1, string user2);
+	void init(string user1, string user2);
 	bool isMovePossible(int i, int j, bool color);
 	bool canMove(bool color);
 	void makeMove(int i, int j, bool color);
@@ -59,7 +53,7 @@ class Board
 	void draw();
 };
 
-Board::Board(string userB, string userW)
+void Board::init(string userB, string userW)
 {
 	// free squares need to be initialized with 2
     for (int i = 0; i < 8; i++)
@@ -74,40 +68,7 @@ Board::Board(string userB, string userW)
     nrDiscs[1] = 2;
 
     this->userB = userB;
-    this->userW = userW;
-
-	// initialize a window
-    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
-    {
-        std::cout << "Failed to initialize the SDL2 library: " << SDL_GetError() << "\n";
-        exit(-1);
-    }
-
-	string winNames = "THe game between " + userB + " and " + userW;
-	const char * winName = winNames.c_str();
-	
-	// create the window
-    window = SDL_CreateWindow( winName,
-                               SDL_WINDOWPOS_CENTERED,
-                               SDL_WINDOWPOS_CENTERED,
-                               WIN_SIZE, WIN_SIZE,
-                               0 );
-
-    if( !window )
-    {
-        cout << "Failed to create window: " << SDL_GetError() << "\n";
-        exit(-1);
-    }
-
-    SDL_Surface * window_surface = SDL_GetWindowSurface( window );
-
-    if( !window_surface )
-    {
-       	cout << "Failed to get the surface from the window: " << SDL_GetError() << "\n";
-        exit(-1);
-    }
-    
-    renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED );
+    this->userW = userW;	
 }
 
 void Board::drawTable()
@@ -148,7 +109,6 @@ void Board::fillCircle(int cx, int cy, bool color)
 		// its mirror image below it.
 
 		double dx = floor( sqrt( ( 2.0 * CIRCLE_RADIUS * dy) - ( dy * dy ) ) );
-		int x = cx - dx;
 		
 		SDL_SetRenderDrawColor( renderer, 
 					CIRCLE_COLORS[color*3], CIRCLE_COLORS[1 + color*3], CIRCLE_COLORS[2 + color*3], 0 );
@@ -413,7 +373,40 @@ int Board::whoWon()
 
 void Board::draw()
 {	
+    // initialize a window
+    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
+    {
+        std::cout << "Failed to initialize the SDL2 library: " << SDL_GetError() << "\n";
+        exit(-1);
+    }  
+    
     SDL_Event e;
+	string winNames = "THe game between " + userB + " and " + userW;
+	const char * winName = winNames.c_str();  
+
+    // create the window
+
+    window = SDL_CreateWindow( winName,
+                               SDL_WINDOWPOS_CENTERED,
+                               SDL_WINDOWPOS_CENTERED,
+                               WIN_SIZE, WIN_SIZE,
+                               0 );
+
+    if( !window )
+    {
+        cout << "Failed to create window: " << SDL_GetError() << "\n";
+        exit(-1);
+    }
+
+    SDL_Surface * window_surface = SDL_GetWindowSurface( window );
+
+    if( !window_surface )
+    {
+       	cout << "Failed to get the surface from the window: " << SDL_GetError() << "\n";
+        exit(-1);
+    }
+
+    renderer = SDL_CreateRenderer( window, -1, SDL_RENDERER_ACCELERATED );
     
 	while( !quit )
     {
@@ -439,20 +432,4 @@ void Board::draw()
         SDL_RenderPresent( renderer );
         SDL_Delay( DRAW_DELAY );        
 	}
-}
-
-
-int main(int argc, char** argv)
-{  
-	int pid;
-	Board board ("wasea", "masea");
-    cout << board.isGameEnded();
-    cout << board.canMove(0) << " black "
-        << board.canMove(1) << " white\n";
-        
-    board.isMovePossible(2, 3, 0);
-    board.makeMove(2, 3, 0);
-    board.draw();  
-    
-    return 0;
 }

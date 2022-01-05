@@ -1,5 +1,5 @@
 all:
-	gcc board.cpp -o board `sdl2-config --cflags --libs`
-	gcc db-queries.cpp -o db-queries -l sqlite3
+	g++ server.cpp -Wall -o server `sdl2-config --cflags --libs` -l sqlite3
+	g++ client.cpp -Wall -o client
 clean:
-	rm -f *~ db-queries board
+	rm -f *~ server client

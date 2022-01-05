@@ -8,6 +8,7 @@
 #include <errno.h>
 
 #include <sqlite3.h>
+#include <SDL2/SDL.h>
 #include <string.h>
 #include <string>
 #include <iostream>
@@ -15,16 +16,22 @@
 using namespace std;
 
 #include "db-queries.h"
+#include "board.h"
 
 const int PORT = 2024;
 const char *ADRESS = "127.0.0.1";
 const int LOGIN_INFO_SIZE = 50;
 const int MSG_SIZE = 600;
 int errno;
+
 DbQueries database("users.db");
+Board board;
 
 void exitWithErr(string errorMessage);
 int isLoginInfoCorrect(string username, string password);
+void writeOppDown(int clientSock1, int clientSock2);
+bool writeMsgToClient(int clientSock1, int clientSock2, const char msg[MSG_SIZE]);
+void writeMsgToClientWithExit(int clientSock1, int clientSock2, const char msg[MSG_SIZE]);
 bool giveLeaderboard(int clientSock1, int clientSock2);
 bool showLeaderboard(int clientSock1, int clientSock2);
 
@@ -186,35 +193,14 @@ int main()
 
 		// tell the clients their opponent's name
 		char username1Char[LOGIN_INFO_SIZE];
-		strcpy(username1Char, username1.c_str());
 		char username2Char[LOGIN_INFO_SIZE];
+		strcpy(username1Char, username1.c_str());
 		strcpy(username2Char, username2.c_str());
 
-		// tell the other client if the server can't contact their opponent
-		if (write(clientSock1, username2Char, LOGIN_INFO_SIZE) <= 0)
-		{
-			close(clientSock1);
-			perror("[server] Couldn't write to client 1.");
-			if (write(clientSock2, "opponent down", MSG_SIZE) <= 0)
-			{
-				close(clientSock2);
-				perror("[server] Couldn't write to client 2.");
-				continue;
-			}
+		if (!writeMsgToClient(clientSock1, clientSock2, username2Char))
 			continue;
-		}
-		if (write(clientSock2, username1Char, LOGIN_INFO_SIZE) <= 0)
-		{
-			close(clientSock2);
-			perror("[server] Couldn't write to client 2.");
-			if (write(clientSock1, "opponent down", MSG_SIZE) <= 0)
-			{
-				close(clientSock1);
-				perror("[server] Couldn't write to client 1.");
-				continue;
-			}
+		if (!writeMsgToClient(clientSock2, clientSock1, username1Char))
 			continue;
-		}
 
 		// creating a child for the pair of users
 		int pid;
@@ -247,21 +233,80 @@ int main()
 			// check if an error occured
 			if (!giveLeaderboard(clientSock1, clientSock2))
 				continue;
-			
 
 			// GAME
-			// choose gamers colors
-			// srand(time(0));
-			// int number = rand() % 2;
-			// int playersSock[2];
-			// if (number)
-			// 	playersSock
-			// bool isGameEnded = 0;
+			// choose gamers colors and order
+			int playersSock[2];
+			bool colors[2];
 
-			// while (!isGameEnded)
-			// {
-				
-			// }
+			srand((unsigned) time(0));
+			int order = rand() % 2;
+			int color = rand() % 2;
+
+			playersSock[order] = clientSock1;
+			playersSock[!order] = clientSock2;
+			colors[order] = color;
+			colors[!order] = !color;
+
+			// send result to players
+			memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
+			sprintf(msg, "%d%d", order, color);
+			cout << msg << endl;
+			writeMsgToClient(clientSock1, clientSock2, msg);
+
+			memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
+			sprintf(msg, "%d%d", !order, !color);
+			cout << msg << endl;
+			writeMsgToClient(clientSock2, clientSock1, msg);
+
+
+			// start game
+			bool isGameEnded = 0;
+			bool currPlayer = 0;
+			char move[3];
+			bool isMoveValid = false;
+
+			board.init(username1, username2);
+
+			while (!isGameEnded)
+			{
+				// the current player can't move
+				if (!board.canMove(colors[currPlayer]) )
+				{
+					writeMsgToClientWithExit(playersSock[currPlayer], playersSock[!currPlayer], "skip");
+					currPlayer = !currPlayer;
+					continue;	
+				}
+
+				// try to get a possible move from the player
+				while(!isMoveValid)
+				{
+					// request a move from the client
+					writeMsgToClientWithExit(playersSock[currPlayer], playersSock[!currPlayer], "move");
+					// get the move
+					bzero(move, 3);
+					if (read(playersSock[currPlayer], move, 3) <= 0)
+					{
+						writeOppDown(playersSock[!currPlayer], playersSock[currPlayer]);
+						exitWithErr("Couldn't get move from client");
+					}
+					cout << move[1] - '1' << " " << move[0]- 'A' << endl;
+					if (board.isMovePossible(move[1] - '1', move[0]- 'A' , colors[currPlayer]))
+						break;
+				}
+
+				writeMsgToClientWithExit(playersSock[currPlayer], playersSock[!currPlayer], "success");
+				board.makeMove(move[1] - '1', move[0]- 'A', colors[currPlayer]);
+
+				if (board.isGameEnded())
+					isGameEnded = 1;
+				else
+					currPlayer = !currPlayer;				
+			}
+
+			// tell the clients that the game has ended
+			writeMsgToClientWithExit(clientSock1, clientSock2, "end");
+			writeMsgToClientWithExit(clientSock2, clientSock1, "end");
 
 			close(clientSock1);
 			close(clientSock2);
@@ -329,7 +374,9 @@ bool giveLeaderboard(int clientSock1, int clientSock2)
 		}
 		return false;
 	}
-	
+
+	cout << "preference: " << msg << endl;
+
 	// give the leaderboard if wanted
 	if (!strcmp(msg, "Y") || !strcmp(msg, "y"))
 	{
@@ -343,7 +390,7 @@ bool giveLeaderboard(int clientSock1, int clientSock2)
 bool showLeaderboard(int clientSock1, int clientSock2)
 {
 	char msg[MSG_SIZE];
-	memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
+	bzero(msg, MSG_SIZE);
 	if (read(clientSock1, msg, MSG_SIZE) <= 0)
 	{
 		close(clientSock1);
@@ -357,7 +404,52 @@ bool showLeaderboard(int clientSock1, int clientSock2)
 		return false;
 	}
 
+	cout << "nr: " << msg << endl;
+
 	database.getNLeaders(clientSock1, atoi(msg));
 
 	return true;
+}
+
+bool writeMsgToClient(int clientSock1, int clientSock2, const char msg[MSG_SIZE])
+{
+	if (write(clientSock1, msg, MSG_SIZE) <= 0)
+	{
+		close(clientSock1);
+		perror("[server] Couldn't write to client.");
+		if (write(clientSock2, "opponent down", MSG_SIZE) <= 0)
+		{
+			close(clientSock2);
+			perror("[server] Couldn't write to client.");
+			return false;
+		}
+		return false;
+	}
+	return true;
+}
+
+void writeMsgToClientWithExit(int clientSock1, int clientSock2, const char msg[MSG_SIZE])
+{
+	if (write(clientSock1, msg, MSG_SIZE) <= 0)
+	{
+		close(clientSock1);
+		exitWithErr("[server] Couldn't write to client.");
+		if (write(clientSock2, "opponent down", MSG_SIZE) <= 0)
+		{
+			close(clientSock2);
+			exitWithErr("[server] Couldn't write to client.");
+		}
+		close(clientSock2);
+	}
+}
+
+void writeOppDown(int clientSock1, int clientSock2)
+{
+	close(clientSock2);
+	if (write(clientSock1, "opponent down", MSG_SIZE) <= 0)
+	{
+		close(clientSock1);
+		exitWithErr("[server] Couldn't write to client.");
+	}
+	close(clientSock1);
 }
