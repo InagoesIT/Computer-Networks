@@ -20,7 +20,7 @@ const int CIRCLE_RADIUS = (SQUARE_SIZE - CIRCLE_PADDING * 2) / 2;
 const int CIRCLE_START_XY = BOARD_XY + CIRCLE_PADDING + CIRCLE_RADIUS;
 const int CIRCLE_XY = (CIRCLE_PADDING + CIRCLE_RADIUS) * 2;
 
-const int DRAW_DELAY = 500;
+const int DRAW_DELAY = 200;
 
 
 class Board
@@ -29,10 +29,12 @@ class Board
     int nrDiscs[2]; // nrDiscs[0] -> black; nrDiscs[1] -> white
     string nextMoveDir;
 
-    string userB; // the name of the user playing with black
-    string userW; // the name of the user playing with white
+    string user1 = ""; // the name of the first logged user
+    string user2 = ""; // the name of the second logged user
 	SDL_Window * window;
-	SDL_Surface * surface;
+	SDL_Surface * screen;
+    SDL_Surface* textSurface;
+    SDL_Texture* text_texture;
 	SDL_Renderer * renderer;
 	SDL_Rect square = { BOARD_XY, BOARD_XY, BOARD_SIZE, BOARD_SIZE };
 	bool quit = false;
@@ -43,32 +45,70 @@ class Board
 	
 	public:
 
-	void init(string user1, string user2);
+    Board(string user1, string user2);
 	bool isMovePossible(int i, int j, bool color);
 	bool canMove(bool color);
 	void makeMove(int i, int j, bool color);
 	bool isGameEnded();
 	int whoWon();
 
-	void draw();
+	void * draw();
+    static void * threadWrapper(void *);
 };
 
-void Board::init(string userB, string userW)
+Board::Board(string user1, string user2)
 {
 	// free squares need to be initialized with 2
     for (int i = 0; i < 8; i++)
         for (int j = 0; j < 8; j++)
             table[i][j] = 2;
     
-    // intial configuration from Othello
     table[3][3] = 1; table[3][4] = 0;
     table[4][3] = 0; table[4][4] = 1;
 
     nrDiscs[0] = 2;
     nrDiscs[1] = 2;
 
-    this->userB = userB;
-    this->userW = userW;	
+
+    // TESTING
+    // -> one move left, black or white moves and the game ends
+    // free squares initialized with 1
+    // for (int i = 0; i < 8; i++)
+    //     for (int j = 0; j < 8; j++)
+    //         table[i][j] = 1;
+    
+    // table[0][2] = 0; table[0][3] = 0; table[2][2] = 0; table[2][5] = 0; 
+    // table[3][3] = 0; table[3][4] = 0; table[4][2] = 0; table[4][4] = 0; table[4][5] = 0;
+    // table[5][1] = 0; table[5][2] = 0; table[5][5] = 0; 
+    // table[6][1] = 0; table[6][2] = 0; 
+    // table[6][3] = 0; table[6][4] = 0; 
+
+    // for (int i = 0; i < 7; i++)
+    //     table[i][7] = 0;    
+
+    // table[7][7] = 1;
+    // table[0][7] = 2;
+    // nrDiscs[0] = 22;
+    // nrDiscs[1] = 41;
+
+    // nrDiscs[0] = 24;
+    // nrDiscs[1] = 42;
+
+
+    this->user1 = user1;
+    this->user2 = user2;
+
+    // create thread for drawing   
+    pthread_t threadId;    					// identifier of the created thread
+
+    pthread_create(&threadId, NULL, Board::threadWrapper, this);
+}
+
+void * Board::threadWrapper(void * ptr)
+{
+    Board * boardPtr = static_cast<Board*> (ptr);       // cast * ptr to Board class type
+    boardPtr->draw();                       // access Board's non-static member draw()
+    return NULL;                        
 }
 
 void Board::drawTable()
@@ -121,7 +161,7 @@ void Board::fillCircle(int cx, int cy, bool color)
 
 bool Board::isMovePossible(int i, int j, bool color) 
 {
-    nextMoveDir = "0";
+    nextMoveDir = "";
 
     // i and j out of bound
     if (i < 0 || i >= 8 || j < 0 || j >= 8)
@@ -140,10 +180,7 @@ bool Board::isMovePossible(int i, int j, bool color)
     {
         for (jj = j + 2; jj < 8 && table[i][jj] == int(!color); jj++);
         if (jj < 8 && table[i][jj] == int(color)) 
-        {
-            nextMoveDir = "r";
-            return true;
-        }
+            nextMoveDir += ":r";
     }
 
     // left
@@ -151,10 +188,7 @@ bool Board::isMovePossible(int i, int j, bool color)
     {
         for (jj = j - 2; jj >= 0 && table[i][jj] == int(!color); jj--);
         if (jj >= 0 && table[i][jj] == int(color)) 
-        {
-            nextMoveDir = "l";
-            return true;
-        }
+            nextMoveDir += ":l";
     }
 
     // above            
@@ -164,10 +198,7 @@ bool Board::isMovePossible(int i, int j, bool color)
         for (ii = i - 2; ii >= 0 && table[ii][j] == int(!color); ii--);
         //daca sirul se termina cu un disc de color, putem captura discul
         if (ii >= 0 && table[ii][j] == int(color))
-        {
-            nextMoveDir = "a";
-            return true;
-        }
+            nextMoveDir += ":ab";
     }
 
     // below             
@@ -175,10 +206,7 @@ bool Board::isMovePossible(int i, int j, bool color)
     {
         for (ii = i + 2; ii < 8 && table[ii][j] == int(!color); ii++);
         if (ii < 8 && table[ii][j] == int(color)) 
-        {
-            nextMoveDir = "b";
-            return true;
-        }
+            nextMoveDir += ":be";
     }
 
     // diagonally, above right
@@ -186,10 +214,7 @@ bool Board::isMovePossible(int i, int j, bool color)
     {
         for (ii = i - 2, jj = j + 2; ii >= 0 && jj < 8 && table[ii][jj] == int(!color); ii--, jj++);
         if (ii >= 0 && jj < 8 && table[ii][jj] == int(color)) 
-        {
-            nextMoveDir = "ar";
-            return true;
-        }
+            nextMoveDir += ":ar";
     }
 
     // diagonally, above left
@@ -197,32 +222,25 @@ bool Board::isMovePossible(int i, int j, bool color)
     {
         for (ii = i - 2, jj = j - 2; ii >= 0 && jj >= 0 && table[ii][jj] == int(!color); ii--, jj--);
         if (ii >= 0 && jj >= 0 && table[ii][jj] == int(color)) 
-        {
-            nextMoveDir = "al";
-            return true;
-        }
+            nextMoveDir += ":al";
     }
     // diagonally, below right
     if (i + 2 < 8 && j + 2 < 8 && table[i + 1][j + 1] == int(!color)) 
     {
         for (ii = i + 2, jj = j + 2; ii < 8 && jj < 8 && table[ii][jj] == int(!color); ii++, jj++);
         if (ii < 8 && jj < 8 && table[ii][jj] == int(color)) 
-        {
-            nextMoveDir = "br";
-            return true;
-        }
+            nextMoveDir += ":br";
     }
     // diagonally, below left
     if (i + 2 < 8 && j - 2 >= 0 && table[i + 1][j - 1] == int(!color)) 
     {
         for (ii = i + 2, jj = j - 2; ii < 8 && jj >= 0 && table[ii][jj] == int(!color); ii++, jj--);
         if (ii < 8 && jj >= 0 && table[ii][jj] == int(color)) 
-        {
-            nextMoveDir = "bl";
-            return true;
-        }
+            nextMoveDir += ":bl";
     }
-    // can't capture any disc from this position
+    // check if we found directions from where we can capture discs
+    if (nextMoveDir != "")
+        return true;
     return false;
 }
 
@@ -236,8 +254,6 @@ bool Board::canMove(bool color)
             if (table[i][j] == int(!color)
                 // verify if this is a case where capturing a disc is impossible
                 &&
-                (i != 0 && j != 0) && (i != 7 && j != 0) &&
-                (i != 0 && j != 7) && (i != 7 && j != 7) &&
                 /*search if we can capture the disc*/
                 ( // vertically
                     isMovePossible(i - 1, j, color) || isMovePossible(i + 1, j, color)
@@ -266,7 +282,7 @@ void Board::makeMove(int i, int j, bool color)
     table[i][j] = color;
     nrDiscs[color]++;
 
-    if (nextMoveDir == "r") 
+    if (nextMoveDir.find(":r", 0) != string::npos) 
     {
         for (jj = j + 1; table[i][jj] == int(!color); jj++)
             table[i][jj] = color;
@@ -275,7 +291,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= jj - j - 1;
     }
 
-    else if (nextMoveDir == "l") 
+    if (nextMoveDir.find(":l", 0) != string::npos) 
     {
         for (jj = j - 1; table[i][jj] == int(!color); jj--)
             table[i][jj] = color;
@@ -284,7 +300,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= j - jj - 1;
     }
 
-    else if (nextMoveDir == "a") 
+    if (nextMoveDir.find(":ab", 0) != string::npos) 
     {
         for (ii = i - 1; table[ii][j] == int(!color); ii--)
             table[ii][j] = color;
@@ -293,7 +309,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= i - ii - 1;
     }
 
-    else if (nextMoveDir == "b") 
+    if (nextMoveDir.find(":be", 0) != string::npos) 
     {
         for (ii = i + 1; table[ii][j] == int(!color); ii++)
             table[ii][j] = color;
@@ -302,7 +318,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= ii - i - 1;
     }
 
-    else if (nextMoveDir == "ar") 
+    if (nextMoveDir.find(":ar", 0) != string::npos) 
     {
         for (ii = i - 1, jj = j + 1; table[ii][jj] == int(!color); ii--, jj++)
             table[ii][jj] = color;
@@ -311,7 +327,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= i - ii - 1;
     }
 
-    else if (nextMoveDir == "al") 
+    if (nextMoveDir.find(":al", 0) != string::npos) 
     {
         for (ii = i - 1, jj = j - 1; table[ii][jj] == int(!color); ii--, jj--)
             table[ii][jj] = color;
@@ -320,7 +336,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= i - ii - 1;
     }
 
-    else if (nextMoveDir == "br") 
+    if (nextMoveDir.find(":br", 0) != string::npos) 
     {
         for (ii = i + 1, jj = j + 1; table[ii][jj] == int(!color); ii++, jj++)
             table[ii][jj] = color;
@@ -329,7 +345,7 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[int(!color)] -= ii - i - 1;
     }
 
-    else if (nextMoveDir == "bl") 
+    else if (nextMoveDir.find(":bl", 0) != string::npos) 
     {
         for (ii = i + 1, jj = j - 1; table[ii][jj] == int(!color); ii++, jj--)
             table[ii][jj] = color;
@@ -337,13 +353,6 @@ void Board::makeMove(int i, int j, bool color)
         nrDiscs[color] += ii - i - 1;
         nrDiscs[int(!color)] -= ii - i - 1;
     }
-    //testing
-    /*for (int i = 0; i < 8; i++) 
-    {
-        cout << "\n";
-        for (int j = 0; j < 8; j++)
-            cout << table[i][j] << " ";
-    }*/
 }
 
 bool Board::isGameEnded() 
@@ -371,17 +380,16 @@ int Board::whoWon()
     return 2;
 }
 
-void Board::draw()
+void * Board::draw()
 {	
-    // initialize a window
-    if( SDL_Init( SDL_INIT_VIDEO ) < 0 )
+    if( SDL_Init( SDL_INIT_EVERYTHING ) < 0 )
     {
         std::cout << "Failed to initialize the SDL2 library: " << SDL_GetError() << "\n";
         exit(-1);
     }  
     
     SDL_Event e;
-	string winNames = "THe game between " + userB + " and " + userW;
+	string winNames = "The game between " + user1 + " and " + user2;
 	const char * winName = winNames.c_str();  
 
     // create the window
@@ -412,13 +420,9 @@ void Board::draw()
     {
     	// handle events on queue
     	while( SDL_PollEvent( &e ) != 0 )
-        {
         	// user requests quit
             if( e.type == SDL_QUIT )
-            {
             	quit = true;
-            }
-        }
 
         // clear screen
        	SDL_SetRenderDrawColor( renderer, SCREEN_COLOR[0], SCREEN_COLOR[1], SCREEN_COLOR[2], 0 );
@@ -432,4 +436,11 @@ void Board::draw()
         SDL_RenderPresent( renderer );
         SDL_Delay( DRAW_DELAY );        
 	}
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    pthread_detach(pthread_self());
+
+    return NULL;
 }

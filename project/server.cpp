@@ -6,17 +6,25 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
-
-#include <sqlite3.h>
-#include <SDL2/SDL.h>
+#include <signal.h>
+#include <pthread.h>
 #include <string.h>
 #include <string>
 #include <iostream>
+
+#include <SDL2/SDL.h>
+#include <sqlite3.h>
 
 using namespace std;
 
 #include "db-queries.h"
 #include "board.h"
+
+struct clientSocks
+{
+	int sock1;
+	int sock2;
+};
 
 const int PORT = 2024;
 const char *ADRESS = "127.0.0.1";
@@ -25,18 +33,19 @@ const int MSG_SIZE = 600;
 int errno;
 
 DbQueries database("users.db");
-Board board;
 
 void exitWithErr(string errorMessage);
 int isLoginInfoCorrect(string username, string password);
 void writeOppDown(int clientSock1, int clientSock2);
 bool writeMsgToClient(int clientSock1, int clientSock2, const char msg[MSG_SIZE]);
 void writeMsgToClientWithExit(int clientSock1, int clientSock2, const char msg[MSG_SIZE]);
-bool giveLeaderboard(int clientSock1, int clientSock2);
+static void * giveLeaderboard(void * args);
 bool showLeaderboard(int clientSock1, int clientSock2);
 
 int main()
 {
+	int clientSock1;            // first client's socket descriptor
+	int clientSock2;			// second client's socket descriptor
 	int listenSock;				// listen socket descriptor
 	struct sockaddr_in server;	// attaching server info to sock
 	struct sockaddr_in client1; // saving client's connection data
@@ -45,6 +54,10 @@ int main()
 	// creating a socket
 	if ((listenSock = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 		exitWithErr("[server] Couldn't create the socket. ");
+
+	// reuse address
+	int on = 1;
+	setsockopt(listenSock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	// clean the structs
 	bzero(&server, sizeof(server));
@@ -65,8 +78,6 @@ int main()
 		exitWithErr("[server] Couldn't listen. ");
 
 	// serving clients
-	int clientSock1;
-	int clientSock2;
 	unsigned int lengthSockInfo = sizeof(client1);
 	int loginType;
 	char userLoginInfo[LOGIN_INFO_SIZE * 2];
@@ -230,9 +241,23 @@ int main()
 			close(listenSock);
 
 			// LEADERBOARD
-			// check if an error occured
-			if (!giveLeaderboard(clientSock1, clientSock2))
-				continue;
+			// create threads for the leaderboard
+			pthread_t threadId[2];    					// identifier of the created thread
+
+			struct clientSocks * client1Socks = (struct clientSocks*)malloc(sizeof(struct clientSocks));	
+			client1Socks->sock1 = clientSock1;
+			client1Socks->sock2 = clientSock2;
+
+			struct clientSocks * client2Socks = (struct clientSocks*)malloc(sizeof(struct clientSocks));
+			client2Socks->sock1 = clientSock2;
+			client2Socks->sock2 = clientSock1;
+
+			pthread_create(&threadId[0], NULL, &giveLeaderboard, client1Socks);
+			pthread_create(&threadId[1], NULL, &giveLeaderboard, client2Socks);
+
+			// wait for threads to finish execution
+			pthread_join(threadId[0], NULL);
+			pthread_join(threadId[1], NULL);
 
 			// GAME
 			// choose gamers colors and order
@@ -251,24 +276,21 @@ int main()
 			// send result to players
 			memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
 			sprintf(msg, "%d%d", order, color);
-			cout << msg << endl;
 			writeMsgToClient(clientSock1, clientSock2, msg);
 
 			memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
 			sprintf(msg, "%d%d", !order, !color);
-			cout << msg << endl;
 			writeMsgToClient(clientSock2, clientSock1, msg);
 
-
 			// start game
-			bool isGameEnded = 0;
 			bool currPlayer = 0;
 			char move[3];
 			bool isMoveValid = false;
 
-			board.init(username1, username2);
+			Board board(username1, username2);
+			bool isEnd = board.isGameEnded();
 
-			while (!isGameEnded)
+			while (!isEnd)
 			{
 				// the current player can't move
 				if (!board.canMove(colors[currPlayer]) )
@@ -290,7 +312,6 @@ int main()
 						writeOppDown(playersSock[!currPlayer], playersSock[currPlayer]);
 						exitWithErr("Couldn't get move from client");
 					}
-					cout << move[1] - '1' << " " << move[0]- 'A' << endl;
 					if (board.isMovePossible(move[1] - '1', move[0]- 'A' , colors[currPlayer]))
 						break;
 				}
@@ -298,15 +319,51 @@ int main()
 				writeMsgToClientWithExit(playersSock[currPlayer], playersSock[!currPlayer], "success");
 				board.makeMove(move[1] - '1', move[0]- 'A', colors[currPlayer]);
 
-				if (board.isGameEnded())
-					isGameEnded = 1;
-				else
-					currPlayer = !currPlayer;				
+				if (!(isEnd = board.isGameEnded()))
+					currPlayer = !currPlayer;	
 			}
 
 			// tell the clients that the game has ended
 			writeMsgToClientWithExit(clientSock1, clientSock2, "end");
 			writeMsgToClientWithExit(clientSock2, clientSock1, "end");
+
+			int wonRes = board.whoWon();
+			bool blackIndex = 0;
+
+			if (colors[0] == 1)
+				blackIndex = !blackIndex;
+
+			// make username1 be the one with black, and 2 white
+			if (!blackIndex)
+				swap(username1, username2);
+
+			if (wonRes == 0)
+			{
+				database.incrementScore(username1);
+				writeMsgToClientWithExit(playersSock[blackIndex], playersSock[!blackIndex], "won");
+				writeMsgToClientWithExit(playersSock[!blackIndex], playersSock[blackIndex], "lost");
+			}
+			else if (wonRes == 1)
+			{
+				database.incrementScore(username2);
+				writeMsgToClientWithExit(playersSock[!blackIndex], playersSock[blackIndex], "won");
+				writeMsgToClientWithExit(playersSock[blackIndex], playersSock[!blackIndex], "lost");
+			}
+			else
+			{
+				database.incrementScore(username1);
+				database.incrementScore(username2);
+				writeMsgToClientWithExit(clientSock1, clientSock2, "draw");
+				writeMsgToClientWithExit(clientSock2, clientSock1, "draw");
+			}
+
+			// give the leaderboard if the user wants
+			pthread_create(&threadId[0], NULL, &giveLeaderboard, client1Socks);
+			pthread_create(&threadId[1], NULL, &giveLeaderboard, client2Socks);
+
+			// wait for threads to finish execution
+			pthread_join(threadId[0], NULL);
+			pthread_join(threadId[1], NULL);
 
 			close(clientSock1);
 			close(clientSock2);
@@ -334,57 +391,34 @@ int isLoginInfoCorrect(string username, string password)
 	return 0;
 }
 
-bool giveLeaderboard(int clientSock1, int clientSock2)
+void * giveLeaderboard(void * args)
 {
+	struct clientSocks clients_socks;
+	clients_socks = *((struct clientSocks * )args);	
 	char msg[MSG_SIZE];
 
-	// find out if the first client wants to see the leaderboard
+	// find out if the client wants to see the leaderboard
 	memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
-	if (read(clientSock1, msg, MSG_SIZE) <= 0)
+	if (read(clients_socks.sock1, msg, MSG_SIZE) <= 0)
 	{
-		close(clientSock1);
+		close(clients_socks.sock1);
 		perror("[server] Couldn't read leaderboard preference from client 1. ");
-		if (write(clientSock2, "opponent down", MSG_SIZE) <= 0)
+		if (write(clients_socks.sock2, "opponent down", MSG_SIZE) <= 0)
 		{
-			close(clientSock2);
+			close(clients_socks.sock2);
 			perror("[server] Couldn't write to client 2.");
-			return false;
-		}
-		return false;
+			exit(0);
+		}		
 	}
 
 	// give the leaderboard if wanted
 	if (!strcmp(msg, "Y") || !strcmp(msg, "y"))
 	{
-		if (!showLeaderboard(clientSock1, clientSock2))
-			return false;
+		if (!showLeaderboard(clients_socks.sock1, clients_socks.sock2))
+			exit(0);
 	}
 
-	// find out if the second client wants to see the leaderboard
-	memset(msg, 0, MSG_SIZE * sizeof(msg[0]));
-	if (read(clientSock2, msg, MSG_SIZE) <= 0)
-	{
-		close(clientSock2);
-		perror("[server] Couldn't read leaderboard preference from client 1. ");
-		if (write(clientSock1, "opponent down", MSG_SIZE) <= 0)
-		{
-			close(clientSock1);
-			perror("[server] Couldn't write to client 2.");
-			return false;
-		}
-		return false;
-	}
-
-	cout << "preference: " << msg << endl;
-
-	// give the leaderboard if wanted
-	if (!strcmp(msg, "Y") || !strcmp(msg, "y"))
-	{
-		if (!showLeaderboard(clientSock2, clientSock1))
-			return false;
-	}	
-
-	return true;
+	return NULL;
 }
 
 bool showLeaderboard(int clientSock1, int clientSock2)
@@ -403,8 +437,6 @@ bool showLeaderboard(int clientSock1, int clientSock2)
 		}
 		return false;
 	}
-
-	cout << "nr: " << msg << endl;
 
 	database.getNLeaders(clientSock1, atoi(msg));
 

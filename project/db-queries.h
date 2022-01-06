@@ -52,7 +52,6 @@ int DbQueries::getNLeadersCallback(void * sock, int colCount, char** colData, ch
     strcat(output, colData[1]);
     strcat(output, "\n");
     write(*(int*)sock, output, LINE_SIZE);
-    cout << output;
     return 0;
 }
 
