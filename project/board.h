@@ -33,8 +33,6 @@ class Board
     string user2 = ""; // the name of the second logged user
 	SDL_Window * window;
 	SDL_Surface * screen;
-    SDL_Surface* textSurface;
-    SDL_Texture* text_texture;
 	SDL_Renderer * renderer;
 	SDL_Rect square = { BOARD_XY, BOARD_XY, BOARD_SIZE, BOARD_SIZE };
 	bool quit = false;
@@ -53,7 +51,7 @@ class Board
 	int whoWon();
 
 	void * draw();
-    static void * threadWrapper(void *);
+    static void * threadWrapper(void * ptr);
 };
 
 Board::Board(string user1, string user2)
@@ -70,9 +68,9 @@ Board::Board(string user1, string user2)
     nrDiscs[1] = 2;
 
 
-    // TESTING
-    // -> one move left, black or white moves and the game ends
-    // free squares initialized with 1
+    // board configuration for presentation
+    // -> one move left, only black can move
+    // // free squares initialized with 1
     // for (int i = 0; i < 8; i++)
     //     for (int j = 0; j < 8; j++)
     //         table[i][j] = 1;
@@ -84,15 +82,13 @@ Board::Board(string user1, string user2)
     // table[6][3] = 0; table[6][4] = 0; 
 
     // for (int i = 0; i < 7; i++)
-    //     table[i][7] = 0;    
+    //     table[i][7] = 1;    
 
-    // table[7][7] = 1;
+    // table[7][7] = 0;
     // table[0][7] = 2;
-    // nrDiscs[0] = 22;
-    // nrDiscs[1] = 41;
 
-    // nrDiscs[0] = 24;
-    // nrDiscs[1] = 42;
+    // nrDiscs[0] = 17;
+    // nrDiscs[1] = 46;
 
 
     this->user1 = user1;

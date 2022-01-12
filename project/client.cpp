@@ -9,9 +9,9 @@
 #include <errno.h>
 #include <string.h>
 #include <cmath>
-
 #include <string>
 #include <iostream>
+
 using namespace std;
 
 const int PORT = 2024; 
@@ -57,13 +57,7 @@ int main ()
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = inet_addr (ADRESS);
     server.sin_port = htons (PORT); // any free port chosen
-
-    // connecting to the server
-    if (connect (sock, (struct sockaddr * ) & server, sizeof(struct sockaddr)) == -1) 
-    {
-        perror ("[client] Couldn't connect to the server. ");
-        exit (errno);
-    }
+    bool isNotConnected = true;
 
     // LOGIN
     
@@ -73,6 +67,19 @@ int main ()
     {
         // getting login info from the client
         getLoginInfo();
+
+        if (isNotConnected)
+        {
+            // connecting to the server
+            if (connect (sock, (struct sockaddr * ) & server, sizeof(struct sockaddr)) == -1) 
+            {
+                perror ("[client] Couldn't connect to the server. ");
+                exit (errno);
+            }
+            isNotConnected = false;
+        }
+
+        cout << "[server] Now you are connected to the server. Yay!" << endl;
 
         // send login info to server
         string loginInfoAux = username + " " + password;
@@ -96,8 +103,14 @@ int main ()
     // tell the client if they were registered or logged in
     if (!strcmp(msg, "login"))
         cout << "[server] Logged successfully." << endl;
-    else
+    else if (!strcmp(msg, "register"))
         cout << "[server] Registered successfully." << endl;
+    else if (!strcmp(msg, "opponent down"))
+    {
+        cout << "Sorry, your opponent disconnected..." << endl;
+        close(sock);
+        exit(0);
+    }
 
     cout << "[client] Please wait while the server finds an opponent..." << endl;
 
@@ -324,6 +337,7 @@ void getLeaderboard(bool isEnd)
     if (!strcmp(msg, "y") || !strcmp(msg, "Y"))
     {
         cout << "[client] How many users do you want to see from the leaderboard?" << endl;
+        cout << "-> ";
         cin >> input;
         nrLeaderboard = getNumber(input);
 

@@ -11,7 +11,6 @@
 #include <string.h>
 #include <string>
 #include <iostream>
-
 #include <SDL2/SDL.h>
 #include <sqlite3.h>
 
@@ -152,6 +151,12 @@ int main()
 		if (clientSock2 < 0)
 		{
 			perror("[server] Couldn't accept the client 2. ");
+			if (write(clientSock1, "opponent down", MSG_SIZE) <= 0)
+			{
+				close(clientSock1);
+				exitWithErr("[server] Couldn't write to client.");
+			}
+			close(clientSock1);
 			continue;
 		}
 
@@ -230,8 +235,6 @@ int main()
 		{
 			close(clientSock1);
 			close(clientSock2);
-			// wait for the exited children to finish - "courtesy wait"
-			while (waitpid(-1, NULL, WNOHANG));
 			continue;
 		}
 
@@ -267,6 +270,10 @@ int main()
 			srand((unsigned) time(0));
 			int order = rand() % 2;
 			int color = rand() % 2;
+
+			//presentation changes
+			// order = 0;
+			// color = 1;
 
 			playersSock[order] = clientSock1;
 			playersSock[!order] = clientSock2;
@@ -334,7 +341,7 @@ int main()
 				blackIndex = !blackIndex;
 
 			// make username1 be the one with black, and 2 white
-			if (!blackIndex)
+			if (blackIndex)
 				swap(username1, username2);
 
 			if (wonRes == 0)

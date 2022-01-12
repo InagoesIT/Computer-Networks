@@ -23,7 +23,7 @@ class DbQueries
     bool isPasswordCorrect(string name, string password);
     bool isNameAvailable(string name);
     void incrementScore(string name);
-    bool getNLeaders(int sock, int n);
+    void getNLeaders(int sock, int n);
 };
 
 void DbQueries::createDb()
@@ -127,7 +127,7 @@ void DbQueries::incrementScore(string name)
     sqlite3_exec(dbObj, isUser.c_str(), NULL, NULL, NULL);    
 }
 
-bool DbQueries::getNLeaders(int sock, int n)
+void DbQueries::getNLeaders(int sock, int n)
 {
     char * dbErrMsg = 0;
     string statement;
@@ -147,6 +147,4 @@ bool DbQueries::getNLeaders(int sock, int n)
 
     if(strcmp(sqlite3_errmsg(dbObj), "not an error"))
         cerr << dbErrMsg << endl;
-
-    return true;
 }
